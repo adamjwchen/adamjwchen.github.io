@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五十音測驗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #1a2421; /* 深色黑板背景 */
+            background-image: radial-gradient(circle, #2a3d36 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #ffffff;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .blackboard {
+            width: 95%;
+            max-width: 850px;
+            margin: 20px auto;
+            padding: 30px;
+            border: 8px solid #5d4037; /* 木框感 */
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 100px rgba(0,0,0,0.3);
+            background-color: #1e332a;
+            position: relative;
+        }
+
+        .chalk-text {
+            color: #f5f5f5;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.2), 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        .chalk-border {
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.2);
+        }
+
+        .option-card {
+            cursor: grab;
+            transition: all 0.2s;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .option-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .drop-zone {
+            width: 110px;
+            height: 130px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #fff;
+            transform: scale(1.05);
+        }
+
+        .correct {
+            border-color: #8bc34a !important;
+            box-shadow: 0 0 15px #8bc34a;
+            color: #8bc34a !important;
+            background: rgba(139, 195, 74, 0.1) !important;
+        }
+
+        .wrong {
+            border-color: #ff5252 !important;
+            box-shadow: 0 0 15px #ff5252;
+            color: #ff5252 !important;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .highlight-blue {
+            border: 2px solid #81d4fa;
+            color: #81d4fa;
+            border-radius: 50% 40% 50% 45% / 40% 50% 45% 50%;
+            padding: 2px 10px;
+        }
+
+        .highlight-yellow {
+            border: 2px solid #fff59d;
+            color: #fff59d;
+            border-radius: 45% 50% 40% 55% / 50% 40% 55% 45%;
+            padding: 2px 10px;
+        }
+
+        .highlight-red {
+            border: 2px solid #ff5252;
+            color: #ff5252;
+            border-radius: 30% 60% 40% 70% / 60% 30% 70% 40%;
+            padding: 2px 10px;
+        }
+
+        .highlight-green {
+            border: 2px solid #8bc34a;
+            color: #8bc34a;
+            border-radius: 20% 50% 30% 60% / 50% 20% 60% 30%;
+            padding: 2px 10px;
+        }
+
+        .btn-chalk {
+            background: transparent;
+            border: 2px solid #fff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-chalk:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-active {
+            background: #fff;
+            color: #1e332a;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .checkbox-container input { display: none; }
+
+        .checkmark {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .checkbox-container input:checked + .checkmark::after {
+            content: "✓";
+            position: absolute;
+            top: -4px;
+            left: 2px;
+            color: #fff59d;
+            font-weight: bold;
+        }
+
+        .chalk-input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px dashed rgba(255, 255, 255, 0.5);
+            color: #fff;
+            text-align: center;
+            width: 80%;
+            font-size: 1.2rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chalk-input:focus {
+            border-bottom-color: #fff;
+        }
+
+        .chalk-input:disabled {
+            color: #8bc34a;
+            border-bottom: none;
+        }
+
+        #message-box {
+            position: fixed;
+            top: 20px;
+            padding: 15px 30px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+            animation: fadeIn 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="message-box" class="chalk-border"></div>
+
+    <!-- 時間到提醒遮罩 -->
+    <div id="time-up-overlay" class="overlay">
+        <div class="p-10 border-4 border-dashed border-red-400 rounded-lg text-center bg-[#1e332a] shadow-2xl">
+            <h2 class="text-5xl font-bold text-red-400 mb-6 chalk-text">時間到！</h2>
+            <p class="text-xl text-gray-200 mb-8 chalk-text">今天的 10 分鐘練習已結束，做得很好！</p>
+            <button class="btn-chalk highlight-yellow text-2xl" onclick="closeOverlay('time-up-overlay')">再試一次</button>
+        </div>
+    </div>
+
+    <!-- 練習完成提醒遮罩 -->
+    <div id="finish-overlay" class="overlay">
+        <div class="p-10 border-4 border-dashed border-green-400 rounded-lg text-center bg-[#1e332a] shadow-2xl">
+            <h2 class="text-5xl font-bold text-green-400 mb-6 chalk-text">修煉完成！</h2>
+            <p class="text-xl text-gray-200 mb-2 chalk-text">恭喜！你已經掌握所選範圍的所有字母！</p>
+            <p id="finish-stats" class="text-lg text-yellow-200 mb-8 chalk-text"></p>
+            <button class="btn-chalk highlight-yellow text-2xl" onclick="closeOverlay('finish-overlay')">開啟新一輪練習</button>
+        </div>
+    </div>
+
+    <div class="blackboard">
+        <!-- 標題與模式切換 -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-gray-600 pb-4">
+            <h1 class="text-3xl font-bold chalk-text mb-4 md:mb-0">五十音 <span class="highlight-blue">專業發音測驗</span></h1>
+            
+            <div class="flex flex-wrap gap-2 justify-center">
+                <div class="flex bg-black bg-opacity-30 p-1 rounded-full mr-2">
+                    <button id="mode-drag" class="btn-chalk btn-active !px-4 !py-1" onclick="setInteractionMode('drag')">拖拉</button>
+                    <button id="mode-type" class="btn-chalk !px-4 !py-1" onclick="setInteractionMode('type')">輸入</button>
+                </div>
+                <button id="btn-hira" class="btn-chalk btn-active" onclick="setMode('hira')">平假名</button>
+                <button id="btn-kata" class="btn-chalk" onclick="setMode('kata')">片假名</button>
+                <button class="btn-chalk highlight-yellow" onclick="resetGame()">重開</button>
+            </div>
+        </div>
+
+        <!-- 範圍篩選器 -->
+        <div class="flex flex-wrap gap-6 mb-8 bg-black bg-opacity-20 p-4 rounded-lg chalk-border border-dashed">
+            <span class="text-gray-400 font-bold">範圍設定：</span>
+            <label class="checkbox-container">
+                <input type="checkbox" id="check-seion" checked onchange="onRangeChange()">
+                <div class="checkmark"></div> 清音
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="check-dakuon" onchange="onRangeChange()">
+                <div class="checkmark"></div> 濁音
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="check-handakuon" onchange="onRangeChange()">
+                <div class="checkmark"></div> 半濁音
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="check-youon" onchange="onRangeChange()">
+                <div class="checkmark"></div> 拗音
+            </label>
+        </div>
+
+        <!-- 資訊欄 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 items-center mb-6 px-4 gap-4 text-center">
+            <div class="text-lg">得分: <span id="score" class="text-2xl font-bold text-yellow-200">0</span></div>
+            
+            <div class="flex flex-col items-center">
+                <div class="text-lg">倒數計時: <span id="timer" class="text-2xl font-bold highlight-red">10:00</span></div>
+                <div class="text-xs text-gray-400 mt-1" id="smart-status">第一題作答後啟動</div>
+            </div>
+
+            <div class="flex flex-col items-center">
+                <div class="text-lg">總進度: <span id="session-progress" class="text-2xl font-bold highlight-green">0 / 0</span></div>
+                <div class="text-xs text-gray-400 mt-1">本組進度: <span id="progress">0 / 5</span></div>
+            </div>
+        </div>
+
+        <!-- 題目區 -->
+        <div id="quiz-container" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+            <!-- 動態生成題目 -->
+        </div>
+
+        <!-- 選項區 -->
+        <div id="options-wrapper" class="mt-8 border-t border-gray-600 pt-6">
+            <p class="text-center mb-4 text-gray-400 italic">答對時自動播放有道真人發音</p>
+            <div id="options-container" class="flex flex-wrap justify-center gap-4">
+                <!-- 動態生成選項 -->
+            </div>
+        </div>
+    </div>
+
+    <footer class="mt-4 text-gray-500 text-sm">
+        設計風格：黑板手繪風格| 練習時間：10 分鐘
+    </footer>
+
+    <script>
+        const seion = [
+            { hira: 'あ', kata: 'ア', romaji: 'a' }, { hira: 'い', kata: 'イ', romaji: 'i' },
+            { hira: 'う', kata: 'ウ', romaji: 'u' }, { hira: 'え', kata: 'エ', romaji: 'e' },
+            { hira: 'お', kata: 'オ', romaji: 'o' }, { hira: 'か', kata: 'カ', romaji: 'ka' },
+            { hira: 'き', kata: 'キ', romaji: 'ki' }, { hira: 'く', kata: 'ク', romaji: 'ku' },
+            { hira: 'け', kata: 'ケ', romaji: 'ke' }, { hira: 'こ', kata: 'コ', romaji: 'ko' },
+            { hira: 'さ', kata: 'サ', romaji: 'sa' }, { hira: 'し', kata: 'シ', romaji: 'shi' },
+            { hira: 'す', kata: 'ス', romaji: 'su' }, { hira: 'せ', kata: 'セ', romaji: 'se' },
+            { hira: 'そ', kata: 'ソ', romaji: 'so' }, { hira: 'た', kata: 'タ', romaji: 'ta' },
+            { hira: 'ち', kata: 'チ', romaji: 'chi' }, { hira: 'つ', kata: 'ツ', romaji: 'tsu' },
+            { hira: 'て', kata: 'テ', romaji: 'te' }, { hira: 'と', kata: 'ト', romaji: 'to' },
+            { hira: 'な', kata: 'ナ', romaji: 'na' }, { hira: 'に', kata: 'ニ', romaji: 'ni' },
+            { hira: 'ぬ', kata: 'ヌ', romaji: 'nu' }, { hira: 'ね', kata: 'ネ', romaji: 'ne' },
+            { hira: 'の', kata: 'ノ', romaji: 'no' }, { hira: 'は', kata: 'ハ', romaji: 'ha' },
+            { hira: 'ひ', kata: 'ヒ', romaji: 'hi' }, { hira: 'ふ', kata: 'フ', romaji: 'fu' },
+            { hira: 'へ', kata: 'ヘ', romaji: 'he' }, { hira: 'ほ', kata: 'ホ', romaji: 'ho' },
+            { hira: 'ま', kata: 'マ', romaji: 'ma' }, { hira: 'み', kata: 'ミ', romaji: 'mi' },
+            { hira: 'む', kata: 'ム', romaji: 'mu' }, { hira: 'め', kata: 'メ', romaji: 'me' },
+            { hira: 'も', kata: 'モ', romaji: 'mo' }, { hira: 'や', kata: 'ヤ', romaji: 'ya' },
+            { hira: 'ゆ', kata: 'ユ', romaji: 'yu' }, { hira: 'よ', kata: 'ヨ', romaji: 'yo' },
+            { hira: 'ら', kata: 'ラ', romaji: 'ra' }, { hira: 'り', kata: 'リ', romaji: 'ri' },
+            { hira: 'る', kata: 'ル', romaji: 'ru' }, { hira: 'れ', kata: 'レ', romaji: 're' },
+            { hira: 'ろ', kata: 'ロ', romaji: 'ro' }, { hira: 'わ', kata: 'ワ', romaji: 'wa' },
+            { hira: 'を', kata: 'ヲ', romaji: 'wo' }, { hira: 'ん', kata: 'ン', romaji: 'n' }
+        ];
+
+        const dakuon = [
+            { hira: 'が', kata: 'ガ', romaji: 'ga' }, { hira: 'ぎ', kata: 'ギ', romaji: 'gi' },
+            { hira: 'ぐ', kata: 'グ', romaji: 'gu' }, { hira: 'げ', kata: 'ゲ', romaji: 'ge' },
+            { hira: 'ご', kata: 'ゴ', romaji: 'go' }, { hira: 'ざ', kata: 'ザ', romaji: 'za' },
+            { hira: 'じ', kata: 'ジ', romaji: 'ji' }, { hira: 'ず', kata: 'ズ', romaji: 'zu' },
+            { hira: 'ぜ', kata: 'ゼ', romaji: 'ze' }, { hira: 'ぞ', kata: 'ゾ', romaji: 'zo' },
+            { hira: 'だ', kata: 'ダ', romaji: 'da' }, { hira: 'ぢ', kata: 'ヂ', romaji: 'ji' },
+            { hira: 'づ', kata: 'ヅ', romaji: 'zu' }, { hira: 'で', kata: 'デ', romaji: 'de' },
+            { hira: 'ど', kata: 'ド', romaji: 'do' }, { hira: 'ば', kata: 'バ', romaji: 'ba' },
+            { hira: 'び', kata: 'ビ', romaji: 'bi' }, { hira: 'ぶ', kata: 'ブ', romaji: 'bu' },
+            { hira: 'べ', kata: 'ベ', romaji: 'be' }, { hira: 'ぼ', kata: 'ボ', romaji: 'bo' }
+        ];
+
+        const handakuon = [
+            { hira: 'ぱ', kata: 'パ', romaji: 'pa' }, { hira: 'ぴ', kata: 'ピ', romaji: 'pi' },
+            { hira: 'ぷ', kata: 'プ', romaji: 'pu' }, { hira: 'ぺ', kata: 'ペ', romaji: 'pe' },
+            { hira: 'ぽ', kata: 'ポ', romaji: 'po' }
+        ];
+
+        const youon = [
+            { hira: 'きゃ', kata: 'キャ', romaji: 'kya' }, { hira: 'きゅ', kata: 'キュ', romaji: 'kyu' }, { hira: 'きょ', kata: 'キョ', romaji: 'kyo' },
+            { hira: 'しゃ', kata: 'シャ', romaji: 'sha' }, { hira: 'しゅ', kata: 'シュ', romaji: 'shu' }, { hira: 'しょ', kata: 'ショ', romaji: 'sho' },
+            { hira: 'ちゃ', kata: 'チャ', romaji: 'cha' }, { hira: 'ちゅ', kata: 'チュ', romaji: 'chu' }, { hira: 'ちょ', kata: 'チョ', romaji: 'cho' },
+            { hira: 'にゃ', kata: 'ニャ', romaji: 'nya' }, { hira: 'にゅ', kata: 'ニュ', romaji: 'nyu' }, { hira: 'にょ', kata: 'ニョ', romaji: 'nyo' },
+            { hira: 'ひゃ', kata: 'ヒャ', romaji: 'hya' }, { hira: 'ひゅ', kata: 'ヒュ', romaji: 'hyu' }, { hira: 'ひょ', kata: 'ヒョ', romaji: 'hyo' },
+            { hira: 'みゃ', kata: 'ミャ', romaji: 'mya' }, { hira: 'みゅ', kata: 'ミュ', romaji: 'myu' }, { hira: 'みょ', kata: 'ミョ', romaji: 'myo' },
+            { hira: 'りゃ', kata: 'リャ', romaji: 'rya' }, { hira: 'りゅ', kata: 'リュ', romaji: 'ryu' }, { hira: 'りょ', kata: 'リョ', romaji: 'ryo' },
+            { hira: 'ぎゃ', kata: 'ギャ', romaji: 'gya' }, { hira: 'ぎゅ', kata: 'ギュ', romaji: 'gyu' }, { hira: 'ぎょ', kata: 'ギョ', romaji: 'gyo' },
+            { hira: 'じゃ', kata: 'ジャ', romaji: 'ja' }, { hira: 'じゅ', kata: 'ジュ', romaji: 'ju' }, { hira: 'じょ', kata: 'ジョ', romaji: 'jo' },
+            { hira: 'びゃ', kata: 'ビャ', romaji: 'bya' }, { hira: 'びゅ', kata: 'ビュ', romaji: 'byu' }, { hira: 'びょ', kata: 'ビョ', romaji: 'byo' },
+            { hira: 'ぴゃ', kata: 'ピャ', romaji: 'pya' }, { hira: 'ぴゅ', kata: 'ピュ', romaji: 'pyu' }, { hira: 'ぴょ', kata: 'ピョ', romaji: 'pyo' }
+        ];
+
+        let currentMode = 'hira';
+        let interactionMode = 'drag';
+        let score = 0;
+        const questionsCount = 5;
+        const distractorCount = 3;
+        const weights = {}; 
+        
+        let timerInterval;
+        let totalSeconds = 10 * 60; // 修改為 10 分鐘
+        let isTimerStarted = false;
+        let currentPool = [];
+        let masteredChars = new Set(); 
+
+        // 初始化權重
+        [...seion, ...dakuon, ...handakuon, ...youon].forEach(item => weights[item.hira] = 1);
+
+        function playJapaneseVoice(text) {
+            const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&le=jap&type=2`;
+            const audio = new Audio(audioUrl);
+            audio.play().catch(error => console.warn("語音播放失敗:", error));
+        }
+
+        function startTimer() {
+            if (isTimerStarted) return;
+            isTimerStarted = true;
+            document.getElementById('smart-status').innerText = "練習進行中...";
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (totalSeconds > 0) {
+                    totalSeconds--;
+                    updateTimerDisplay();
+                } else {
+                    onTimeUp();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            document.getElementById('timer').innerText = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function onTimeUp() {
+            clearInterval(timerInterval);
+            document.getElementById('time-up-overlay').style.display = 'flex';
+        }
+
+        function onPracticeFinish() {
+            clearInterval(timerInterval);
+            const overlay = document.getElementById('finish-overlay');
+            const stats = document.getElementById('finish-stats');
+            const timeStr = document.getElementById('timer').innerText;
+            stats.innerText = `總共挑戰了 ${currentPool.length} 個字元\n剩餘時間：${timeStr}\n最終累計得分：${score}`;
+            overlay.style.display = 'flex';
+        }
+
+        function closeOverlay(id) {
+            document.getElementById(id).style.display = 'none';
+            resetGame();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-hira').classList.toggle('btn-active', mode === 'hira');
+            document.getElementById('btn-kata').classList.toggle('btn-active', mode === 'kata');
+            resetGame();
+        }
+
+        function setInteractionMode(mode) {
+            interactionMode = mode;
+            document.getElementById('mode-drag').classList.toggle('btn-active', mode === 'drag');
+            document.getElementById('mode-type').classList.toggle('btn-active', mode === 'type');
+            document.getElementById('options-wrapper').style.display = (mode === 'drag') ? 'block' : 'none';
+            resetGame();
+        }
+
+        function onRangeChange() {
+            resetGame();
+        }
+
+        function showMessage(text, isError = false) {
+            const box = document.getElementById('message-box');
+            box.innerText = text;
+            box.style.display = 'block';
+            box.style.backgroundColor = isError ? '#c62828' : '#2e7d32';
+            setTimeout(() => box.style.display = 'none', 1500);
+        }
+
+        function resetGame() {
+            score = 0;
+            totalSeconds = 10 * 60; // 重置為 10 分鐘
+            isTimerStarted = false;
+            masteredChars.clear();
+            clearInterval(timerInterval);
+            document.getElementById('score').innerText = score;
+            document.getElementById('progress').innerText = `0 / ${questionsCount}`;
+            document.getElementById('smart-status').innerText = "第一題作答後啟動";
+            updateTimerDisplay();
+            initQuiz();
+        }
+
+        // 智慧出題：絕對優先選出尚未答對過的項目，解決卡在最後一字的問題
+        function getSmartPool(pool, count) {
+            let unmastered = pool.filter(item => !masteredChars.has(item.hira));
+            unmastered.sort(() => Math.random() - 0.5);
+            
+            let selected = unmastered.slice(0, count);
+            
+            if (selected.length < count) {
+                const remainingCount = count - selected.length;
+                const masteredPool = pool.filter(item => masteredChars.has(item.hira));
+                const fillers = getWeightedSample(masteredPool, remainingCount);
+                selected = selected.concat(fillers);
+            }
+            
+            return selected.sort(() => Math.random() - 0.5);
+        }
+
+        function getWeightedSample(pool, count) {
+            if (pool.length === 0) return [];
+            let result = [];
+            let tempPool = [...pool];
+            for (let i = 0; i < count && tempPool.length > 0; i++) {
+                let totalWeight = tempPool.reduce((sum, item) => sum + (weights[item.hira] || 1), 0);
+                let rand = Math.random() * totalWeight;
+                let currentWeight = 0;
+                for (let j = 0; j < tempPool.length; j++) {
+                    currentWeight += (weights[tempPool[j].hira] || 1);
+                    if (rand <= currentWeight) {
+                        result.push(tempPool[j]);
+                        tempPool.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
+        function updateSessionProgressDisplay() {
+            const display = document.getElementById('session-progress');
+            display.innerText = `${masteredChars.size} / ${currentPool.length}`;
+            
+            if (masteredChars.size >= currentPool.length && currentPool.length > 0) {
+                setTimeout(onPracticeFinish, 800);
+            }
+        }
+
+        function initQuiz() {
+            const quizContainer = document.getElementById('quiz-container');
+            const optionsContainer = document.getElementById('options-container');
+            
+            currentPool = [];
+            if (document.getElementById('check-seion').checked) currentPool = currentPool.concat(seion);
+            if (document.getElementById('check-dakuon').checked) currentPool = currentPool.concat(dakuon);
+            if (document.getElementById('check-handakuon').checked) currentPool = currentPool.concat(handakuon);
+            if (document.getElementById('check-youon').checked) currentPool = currentPool.concat(youon);
+
+            if (currentPool.length === 0) {
+                document.getElementById('check-seion').checked = true;
+                currentPool = [...seion];
+            }
+
+            updateSessionProgressDisplay();
+
+            quizContainer.innerHTML = '';
+            optionsContainer.innerHTML = '';
+            
+            const quizItems = getSmartPool(currentPool, questionsCount);
+            
+            quizItems.forEach((item) => {
+                const zone = document.createElement('div');
+                zone.className = 'drop-zone chalk-text';
+                zone.dataset.answer = item.romaji;
+                zone.dataset.hira = item.hira; 
+                zone.dataset.char = item[currentMode];
+                
+                if (interactionMode === 'drag') {
+                    zone.innerHTML = `
+                        <span class="text-4xl mb-2">${item[currentMode]}</span>
+                        <div class="target-slot w-full h-8 border-t border-gray-600 flex items-center justify-center text-sm italic text-gray-400">?</div>
+                    `;
+                    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+                    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                    zone.addEventListener('drop', handleDrop);
+                } else {
+                    zone.innerHTML = `
+                        <span class="text-4xl mb-2">${item[currentMode]}</span>
+                        <input type="text" class="chalk-input" placeholder="..." autocomplete="off">
+                    `;
+                    zone.querySelector('input').addEventListener('input', (e) => handleTyping(e, zone));
+                }
+                quizContainer.appendChild(zone);
+            });
+
+            if (interactionMode === 'drag') {
+                const remainingPool = currentPool.filter(p => !quizItems.includes(p));
+                const distractors = remainingPool.sort(() => 0.5 - Math.random()).slice(0, distractorCount);
+                const allOptions = [...quizItems, ...distractors].sort(() => 0.5 - Math.random());
+                
+                allOptions.forEach(item => {
+                    const opt = document.createElement('div');
+                    opt.className = 'option-card chalk-border p-3 px-6 text-xl font-bold chalk-text';
+                    opt.draggable = true;
+                    opt.innerText = item.romaji;
+                    opt.dataset.romaji = item.romaji;
+                    opt.addEventListener('dragstart', e => {
+                        e.dataTransfer.setData('text/plain', item.romaji);
+                        opt.style.opacity = '0.4';
+                    });
+                    opt.addEventListener('dragend', () => opt.style.opacity = '1');
+                    optionsContainer.appendChild(opt);
+                });
+            } else {
+                setTimeout(() => {
+                    const firstInput = quizContainer.querySelector('input');
+                    if (firstInput) firstInput.focus();
+                }, 100);
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const zone = e.currentTarget;
+            zone.classList.remove('drag-over');
+            
+            // 觸發動作啟動計時
+            if (!isTimerStarted) startTimer();
+
+            if (zone.classList.contains('correct')) return;
+            
+            const droppedRomaji = e.dataTransfer.getData('text/plain').toLowerCase();
+            const correctAnswer = zone.dataset.answer.toLowerCase();
+            
+            if (droppedRomaji === correctAnswer) {
+                markCorrect(zone, droppedRomaji);
+                const opt = document.querySelector(`.option-card[data-romaji="${droppedRomaji}"]`);
+                if (opt) opt.remove();
+                checkWin();
+            } else {
+                markWrong(zone);
+            }
+        }
+
+        function handleTyping(e, zone) {
+            const input = e.target;
+            const typedValue = input.value.trim().toLowerCase();
+            const correctAnswer = zone.dataset.answer.toLowerCase();
+            
+            // 觸發動作啟動計時
+            if (!isTimerStarted && typedValue.length > 0) startTimer();
+
+            if (typedValue === correctAnswer) {
+                input.disabled = true;
+                markCorrect(zone, typedValue);
+                const nextZone = zone.nextElementSibling;
+                if (nextZone) {
+                    const nextInput = nextZone.querySelector('input');
+                    if (nextInput) nextInput.focus();
+                }
+                checkWin();
+            }
+        }
+
+        function markCorrect(zone, value) {
+            const hiraKey = zone.dataset.hira;
+            const charToSpeak = zone.dataset.char;
+
+            playJapaneseVoice(charToSpeak);
+
+            masteredChars.add(hiraKey);
+            updateSessionProgressDisplay();
+
+            if (weights[hiraKey] > 1) weights[hiraKey] = Math.max(1, weights[hiraKey] - 1);
+            
+            zone.classList.add('correct');
+            const slot = zone.querySelector('.target-slot');
+            if (slot) {
+                slot.innerText = value;
+                slot.classList.replace('text-gray-400', 'text-green-400');
+                slot.classList.add('font-bold');
+            }
+            score += 20;
+            document.getElementById('score').innerText = score;
+        }
+
+        function markWrong(zone) {
+            const hiraKey = zone.dataset.hira;
+            weights[hiraKey] = (weights[hiraKey] || 1) + 5;
+            zone.classList.add('wrong');
+            showMessage('記下來了，練習時這題頻率會增加！', true);
+            setTimeout(() => zone.classList.remove('wrong'), 800);
+        }
+
+        function checkWin() {
+            const corrects = document.querySelectorAll('.drop-zone.correct').length;
+            document.getElementById('progress').innerText = `${corrects} / ${questionsCount}`;
+            
+            if (corrects === questionsCount && masteredChars.size < currentPool.length) {
+                setTimeout(() => {
+                    showMessage('下一組挑戰！');
+                    initQuiz();
+                }, 1000);
+            }
+        }
+
+        window.onload = () => {
+            updateTimerDisplay();
+            initQuiz();
+        };
+    </script>
+</body>
+</html>
