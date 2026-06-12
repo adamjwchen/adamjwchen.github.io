@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>日文五十音學習系統</title>
+  
+  <!-- 載入 Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Lucide 圖示庫 (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- 載入 Google 字體 (Klee One 硬筆字體) -->
+  <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
+
+  <script>
+    // Tailwind 自訂設定
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            handwriting: ['"Klee One"', '"UD Digi Kyokasho N-R"', '"Yu Kyokasho"', '"YuKyokasho"', '"Toppan Bunkyu Kyokasho"', 'Kaiti', '"DFKai-SB"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 自訂 CSS 動畫與 3D 效果 */
+    body { -webkit-tap-highlight-color: transparent; }
+    .perspective-1000 { perspective: 1000px; }
+    .transform-style-3d { transform-style: preserve-3d; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    
+    /* 隱藏捲軸但保持可滑動 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 雙向滑動條樣式 */
+    .custom-range::-webkit-slider-thumb {
+      pointer-events: auto; -webkit-appearance: none; width: 26px; height: 26px;
+      background-color: white; border: 2px solid #cbd5e1; border-radius: 50%;
+      cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.1s;
+    }
+    .custom-range::-moz-range-thumb {
+      pointer-events: auto; width: 26px; height: 26px; background-color: white;
+      border: 2px solid #cbd5e1; border-radius: 50%; cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: transform 0.1s;
+    }
+    .custom-range:active::-webkit-slider-thumb { transform: scale(1.15); border-color: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen bg-amber-50 text-slate-800 font-sans selection:bg-amber-200 pb-10">
+
+  <!-- 頂部導航 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-3 md:h-16 flex flex-col md:flex-row items-center justify-between gap-3">
+      
+      <div class="flex items-center justify-between w-full md:w-auto">
+        <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2 whitespace-nowrap transition-colors duration-300 pr-4" id="main-title">
+          <span class="text-3xl text-amber-600" id="title-icon">あ</span> 
+          <span class="text-amber-600" id="title-text">平假名</span>
+        </h1>
+
+        <!-- 語系切換開關 -->
+        <div class="flex bg-slate-100 p-1 rounded-lg">
+          <button onclick="setKanaType('hiragana')" id="btn-hiragana" class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 bg-white shadow-sm text-amber-600">平假名</button>
+          <button onclick="setKanaType('katakana')" id="btn-katakana" class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-slate-500 hover:text-slate-700">片假名</button>
+        </div>
+      </div>
+
+      <nav class="flex gap-1 md:gap-4 overflow-x-auto no-scrollbar w-full md:w-auto pb-1 md:pb-0" id="nav-tabs">
+        <button onclick="switchTab('chart')" class="nav-tab active flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors duration-200 text-sm md:text-base font-medium whitespace-nowrap bg-amber-100 text-amber-700" data-tab="chart">
+          <i data-lucide="layout-grid" class="w-5 h-5"></i> <span>五十音表</span>
+        </button>
+        <button onclick="switchTab('flashcard')" class="nav-tab flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors duration-200 text-sm md:text-base font-medium whitespace-nowrap text-slate-500 hover:bg-slate-100" data-tab="flashcard">
+          <i data-lucide="layers" class="w-5 h-5"></i> <span>字卡記憶</span>
+        </button>
+        <button onclick="switchTab('quiz')" class="nav-tab flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors duration-200 text-sm md:text-base font-medium whitespace-nowrap text-slate-500 hover:bg-slate-100" data-tab="quiz">
+          <i data-lucide="gamepad-2" class="w-5 h-5"></i> <span>隨機測驗</span>
+        </button>
+        <button onclick="switchTab('writing')" class="nav-tab flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors duration-200 text-sm md:text-base font-medium whitespace-nowrap text-slate-500 hover:bg-slate-100" data-tab="writing">
+          <i data-lucide="pen-tool" class="w-5 h-5"></i> <span>手寫練習</span>
+        </button>
+        <button onclick="switchTab('listening')" class="nav-tab flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors duration-200 text-sm md:text-base font-medium whitespace-nowrap text-slate-500 hover:bg-slate-100" data-tab="listening">
+          <i data-lucide="headphones" class="w-5 h-5"></i> <span>聽力練習</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main class="max-w-4xl mx-auto p-4 md:p-8 relative">
+    
+    <!-- 視圖 1: 五十音表 -->
+    <div id="view-chart" class="animate-fade-in flex flex-col items-center gap-10">
+      <div class="text-center w-full">
+        <p class="text-slate-500 text-sm mb-4">點擊格子可以聆聽發音</p>
+        <div id="chart-container"></div>
+      </div>
+    </div>
+
+    <!-- 視圖 2: 字卡記憶 -->
+    <div id="view-flashcard" class="animate-fade-in hidden flex flex-col items-center justify-center min-h-[50vh] md:min-h-[60vh]">
+      <div id="fc-category-selector" class="flex flex-wrap justify-center gap-2 mb-4 md:mb-6 w-full max-w-xl mx-auto"></div>
+      
+      <div class="flex flex-col items-center w-full max-w-[280px] sm:max-w-xs md:max-w-sm mb-2 md:mb-6 bg-white px-4 py-3 md:px-5 md:py-4 rounded-xl shadow-sm border border-slate-100">
+        <div class="flex justify-between w-full mb-3 text-sm md:text-base text-slate-500 font-medium">
+          <span>練習範圍</span> <span id="fc-range-text" class="font-bold text-amber-600">1 - 46</span>
+        </div>
+        <div class="relative w-full h-8 flex items-center mb-1">
+          <div class="absolute w-full h-2 bg-slate-100 rounded-full"></div>
+          <div id="fc-range-track" class="absolute h-2 rounded-full bg-amber-400"></div>
+          <input type="range" id="fc-range-min" class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none z-10 custom-range">
+          <input type="range" id="fc-range-max" class="absolute w-full h-2 appearance-none bg-transparent pointer-events-none z-20 custom-range">
+        </div>
+        <button id="fc-apply-btn" class="mt-2 md:mt-3 w-full py-2 rounded-lg transition-colors font-medium text-sm md:text-base active:scale-95 bg-amber-100 text-amber-700 hover:bg-amber-200">套用範圍</button>
+      </div>
+
+      <div id="fc-progress" class="text-slate-500 mb-1 md:mb-4 font-medium tracking-widest text-sm md:text-base">1 / 46</div>
+
+      <div class="flex items-center justify-center gap-3 md:gap-8 w-full px-2">
+        <button onclick="FlashcardApp.prev()" class="p-2 md:p-4 bg-white rounded-full shadow-md hover:shadow-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all active:scale-90 shrink-0">
+          <i data-lucide="chevron-left" class="w-8 h-8 md:w-12 md:h-12 stroke-[2.5]"></i>
+        </button>
+        <div id="fc-card-container" class="relative w-48 h-56 sm:w-56 sm:h-72 md:w-80 md:h-96 perspective-1000 cursor-pointer shrink-0">
+          <div id="fc-card-inner" class="w-full h-full transition-transform duration-500 transform-style-3d">
+            <div class="absolute w-full h-full backface-hidden bg-white rounded-3xl shadow-lg border-2 border-slate-100 flex flex-col items-center justify-center">
+              <span id="fc-front-k" class="text-6xl sm:text-7xl md:text-9xl font-medium text-slate-800 tracking-tighter">あ</span>
+              <span class="absolute bottom-3 md:bottom-6 text-slate-400 flex items-center gap-2 text-xs md:text-sm"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 點擊翻面</span>
+            </div>
+            <div id="fc-back-bg" class="absolute w-full h-full backface-hidden text-white rounded-3xl shadow-lg flex flex-col items-center justify-center rotate-y-180 bg-amber-500">
+              <span id="fc-back-r" class="text-4xl sm:text-5xl md:text-7xl font-bold tracking-widest">a</span>
+              <span id="fc-back-k" class="text-lg md:text-2xl mt-2 md:mt-4 opacity-80">あ</span>
+              <button id="fc-audio-btn" class="absolute bottom-3 md:bottom-6 p-2 md:p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+                <i data-lucide="volume-2" class="w-5 h-5 md:w-6 md:h-6"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button onclick="FlashcardApp.next()" class="p-2 md:p-4 bg-white rounded-full shadow-md hover:shadow-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all active:scale-90 shrink-0">
+          <i data-lucide="chevron-right" class="w-8 h-8 md:w-12 md:h-12 stroke-[2.5]"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center mt-4 md:mt-8">
+        <button onclick="FlashcardApp.shuffle()" class="px-5 py-2.5 md:px-6 md:py-3 bg-white rounded-full shadow-sm hover:shadow hover:bg-slate-50 text-slate-600 text-sm md:text-base font-medium transition-all flex items-center gap-2 active:scale-95">
+          <i data-lucide="refresh-cw" class="w-4 h-4 md:w-5 md:h-5"></i> 打亂順序
+        </button>
+      </div>
+    </div>
+
+    <!-- 視圖 3: 隨機測驗 -->
+    <div id="view-quiz" class="animate-fade-in hidden max-w-lg mx-auto mt-2 md:mt-8">
+      <div id="qz-category-selector" class="flex flex-wrap justify-center gap-2 mb-4 md:mb-6 w-full max-w-xl mx-auto"></div>
+      
+      <div class="flex justify-between items-center mb-3 md:mb-6 bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-100">
+        <div class="text-slate-500 font-medium text-sm md:text-base">題數：<span id="qz-total" class="text-slate-800 text-base md:text-lg">0</span></div>
+        <div class="text-slate-500 font-medium text-sm md:text-base">正確率：<span id="qz-accuracy" class="text-base md:text-lg text-amber-500">0%</span></div>
+        <button onclick="QuizApp.resetStats()" class="text-xs text-slate-400 hover:text-slate-600 underline">重置</button>
+      </div>
+
+      <div class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 text-center mb-4 md:mb-6 relative overflow-hidden">
+        <div id="qz-bg-pulse" class="absolute inset-0 hidden"></div>
+        <div class="relative z-10">
+          <p class="text-slate-400 text-xs md:text-sm font-medium mb-2 md:mb-4 uppercase tracking-widest">請選出正確的羅馬拼音</p>
+          <div id="qz-question" class="text-7xl md:text-9xl font-bold text-slate-800 mb-4 md:mb-8 tracking-tighter">あ</div>
+          <div id="qz-icon-container" class="h-6 md:h-8 flex justify-center items-center"></div>
+        </div>
+      </div>
+
+      <div id="qz-options" class="grid grid-cols-2 gap-3 md:gap-4"></div>
+    </div>
+
+    <!-- 視圖 4: 手寫練習 -->
+    <div id="view-writing" class="animate-fade-in hidden flex flex-col items-center max-w-lg mx-auto mt-0 md:mt-6">
+      <div id="wr-category-selector" class="flex flex-wrap justify-center gap-2 mb-4 md:mb-6 w-full max-w-xl mx-auto"></div>
+      
+      <div class="mb-2 md:mb-4 text-center mt-2">
+        <h2 class="text-xl md:text-2xl font-bold mb-0 md:mb-1">手寫練習</h2>
+        <p class="text-slate-500 text-xs md:text-sm hidden sm:block">跟著空心字跡描寫，寫完可點擊右下角聽發音</p>
+      </div>
+
+      <div class="w-full max-w-[280px] sm:max-w-[320px] md:max-w-[400px] flex justify-between items-center mb-2 md:mb-4 px-1">
+        <div class="w-10 md:w-[52px]" aria-hidden="true"></div>
+        <div id="wr-progress" class="text-slate-500 text-sm md:text-base font-medium tracking-widest bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl shadow-sm border border-slate-100">1 / 46</div>
+        <button onclick="WritingApp.clearCanvas()" class="p-2 md:p-3 bg-white rounded-full shadow-sm hover:shadow hover:bg-red-50 text-red-500 transition-all" title="清除重寫">
+          <i data-lucide="eraser" class="w-5 h-5 md:w-6 md:h-6"></i>
+        </button>
+      </div>
+
+      <div class="relative w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] md:w-[400px] md:h-[400px] bg-white rounded-2xl shadow-sm border-2 border-slate-200 overflow-hidden touch-none">
+        <div class="absolute inset-0 pointer-events-none grid grid-cols-2 grid-rows-2 opacity-60">
+          <div class="border-r border-b border-dashed border-red-300"></div><div class="border-b border-dashed border-red-300"></div>
+          <div class="border-r border-dashed border-red-300"></div><div></div>
+        </div>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <span id="wr-bg-char" class="font-handwriting font-semibold transform -translate-y-[8%] tracking-tighter" style="-webkit-text-stroke: 3px #cbd5e1; color: transparent; line-height: 1;">あ</span>
+        </div>
+        <canvas id="wr-canvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+        <button id="wr-audio-btn" class="absolute z-10 bottom-1 right-2 md:bottom-2 md:right-3 flex items-center gap-1.5 p-2 text-slate-300 font-bold text-2xl md:text-3xl select-none transition-colors active:scale-95 hover:text-amber-500" title="點擊播放發音">
+          <i data-lucide="volume-2" class="w-5 h-5 md:w-6 md:h-6 opacity-70"></i> <span id="wr-romaji">a</span>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-6 md:gap-8 mt-4 md:mt-8">
+        <button onclick="WritingApp.prev()" class="p-3 md:p-4 bg-white rounded-full shadow-sm hover:shadow hover:bg-slate-50 text-slate-600 transition-all">
+          <i data-lucide="chevron-left" class="w-6 h-6 md:w-7 md:h-7"></i>
+        </button>
+        <div id="wr-current-char" class="text-2xl md:text-3xl font-bold text-slate-700 w-16 md:w-20 text-center tracking-tighter">あ</div>
+        <button onclick="WritingApp.next()" class="p-3 md:p-4 bg-white rounded-full shadow-sm hover:shadow hover:bg-slate-50 text-slate-600 transition-all">
+          <i data-lucide="chevron-right" class="w-6 h-6 md:w-7 md:h-7"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 視圖 5: 聽力練習 -->
+    <div id="view-listening" class="animate-fade-in hidden flex flex-col items-center max-w-xl mx-auto mt-1 md:mt-6">
+      <div class="mb-3 md:mb-6 text-center">
+        <h2 class="text-xl md:text-2xl font-bold mb-1 md:mb-2">聽力練習</h2>
+        <p class="text-slate-500 text-xs md:text-sm">輸入日文句子，自訂語速進行發音練習</p>
+      </div>
+
+      <div class="w-full bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 mb-3 md:mb-6">
+        <textarea id="ls-text" placeholder="請輸入想練習聽力的日文句子..." class="w-full h-24 md:h-32 p-3 md:p-4 text-base md:text-lg bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-1 transition-all focus:border-amber-400 focus:ring-amber-400"></textarea>
+        <div class="flex flex-wrap gap-2 mt-3" id="ls-shortcuts"></div>
+      </div>
+
+      <div class="w-full bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
+        <div class="w-full mb-6 md:mb-8 px-2 md:px-4">
+          <div class="flex justify-between text-xs md:text-sm text-slate-500 mb-2 font-medium">
+            <span>慢速 (0.5x)</span>
+            <span id="ls-rate-text">語速：0.85x</span>
+            <span>快速 (1.5x)</span>
+          </div>
+          <input type="range" id="ls-rate" min="0.5" max="1.5" step="0.05" value="0.85" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer custom-range">
+        </div>
+        <button id="ls-play-btn" class="flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 rounded-full text-white font-bold text-base md:text-lg transition-all duration-300 transform active:scale-95 bg-amber-500 hover:opacity-90 shadow-lg shadow-amber-200 disabled:opacity-50 disabled:active:scale-100">
+          <i data-lucide="play" class="fill-current w-5 h-5 md:w-6 md:h-6"></i> <span>朗讀句子</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // 1. 資料庫與發音系統
+    // ==========================================
+    const kanaData = {
+      hiragana: {
+        seion: [
+          { k: 'あ', r: 'a' }, { k: 'い', r: 'i' }, { k: 'う', r: 'u' }, { k: 'え', r: 'e' }, { k: 'お', r: 'o' },
+          { k: 'か', r: 'ka' }, { k: 'き', r: 'ki' }, { k: 'く', r: 'ku' }, { k: 'け', r: 'ke' }, { k: 'こ', r: 'ko' },
+          { k: 'さ', r: 'sa' }, { k: 'し', r: 'shi' }, { k: 'す', r: 'su' }, { k: 'せ', r: 'se' }, { k: 'そ', r: 'so' },
+          { k: 'た', r: 'ta' }, { k: 'ち', r: 'chi' }, { k: 'つ', r: 'tsu' }, { k: 'て', r: 'te' }, { k: 'と', r: 'to' },
+          { k: 'な', r: 'na' }, { k: 'に', r: 'ni' }, { k: 'ぬ', r: 'nu' }, { k: 'ね', r: 'ne' }, { k: 'の', r: 'no' },
+          { k: 'は', r: 'ha' }, { k: 'ひ', r: 'hi' }, { k: 'ふ', r: 'fu' }, { k: 'へ', r: 'he' }, { k: 'ほ', r: 'ho' },
+          { k: 'ま', r: 'ma' }, { k: 'み', r: 'mi' }, { k: 'む', r: 'mu' }, { k: 'め', r: 'me' }, { k: 'も', r: 'mo' },
+          { k: 'や', r: 'ya' }, { empty: true }, { k: 'ゆ', r: 'yu' }, { empty: true }, { k: 'よ', r: 'yo' },
+          { k: 'ら', r: 'ra' }, { k: 'り', r: 'ri' }, { k: 'る', r: 'ru' }, { k: 'れ', r: 're' }, { k: 'ろ', r: 'ro' },
+          { k: 'わ', r: 'wa' }, { empty: true }, { empty: true }, { empty: true }, { k: 'を', r: 'wo' },
+          { k: 'ん', r: 'n' }, { empty: true }, { empty: true }, { empty: true }, { empty: true },
+        ],
+        dakuon: [
+          { k: 'が', r: 'ga' }, { k: 'ぎ', r: 'gi' }, { k: 'ぐ', r: 'gu' }, { k: 'げ', r: 'ge' }, { k: 'ご', r: 'go' },
+          { k: 'ざ', r: 'za' }, { k: 'じ', r: 'ji' }, { k: 'ず', r: 'zu' }, { k: 'ぜ', r: 'ze' }, { k: 'ぞ', r: 'zo' },
+          { k: 'だ', r: 'da' }, { k: 'ぢ', r: 'ji' }, { k: 'づ', r: 'zu' }, { k: 'で', r: 'de' }, { k: 'ど', r: 'do' },
+          { k: 'ば', r: 'ba' }, { k: 'び', r: 'bi' }, { k: 'ぶ', r: 'bu' }, { k: 'べ', r: 'be' }, { k: 'ぼ', r: 'bo' },
+          { k: 'ぱ', r: 'pa' }, { k: 'ぴ', r: 'pi' }, { k: 'ぷ', r: 'pu' }, { k: 'ぺ', r: 'pe' }, { k: 'ぽ', r: 'po' }
+        ],
+        yoon: [
+          { k: 'きゃ', r: 'kya' }, { k: 'きゅ', r: 'kyu' }, { k: 'きょ', r: 'kyo' },
+          { k: 'しゃ', r: 'sha' }, { k: 'しゅ', r: 'shu' }, { k: 'しょ', r: 'sho' },
+          { k: 'ちゃ', r: 'cha' }, { k: 'ちゅ', r: 'chu' }, { k: 'ちょ', r: 'cho' },
+          { k: 'にゃ', r: 'nya' }, { k: 'にゅ', r: 'nyu' }, { k: 'にょ', r: 'nyo' },
+          { k: 'ひゃ', r: 'hya' }, { k: 'ひゅ', r: 'hyu' }, { k: 'ひょ', r: 'hyo' },
+          { k: 'みゃ', r: 'mya' }, { k: 'みゅ', r: 'myu' }, { k: 'みょ', r: 'myo' },
+          { k: 'りゃ', r: 'rya' }, { k: 'りゅ', r: 'ryu' }, { k: 'りょ', r: 'ryo' },
+          { k: 'ぎゃ', r: 'gya' }, { k: 'ぎゅ', r: 'gyu' }, { k: 'ぎょ', r: 'gyo' },
+          { k: 'じゃ', r: 'ja' }, { k: 'じゅ', r: 'ju' }, { k: 'じょ', r: 'jo' },
+          { k: 'びゃ', r: 'bya' }, { k: 'びゅ', r: 'byu' }, { k: 'びょ', r: 'byo' },
+          { k: 'ぴゃ', r: 'pya' }, { k: 'ぴゅ', r: 'pyu' }, { k: 'ぴょ', r: 'pyo' }
+        ]
+      },
+      katakana: {
+        seion: [
+          { k: 'ア', r: 'a' }, { k: 'イ', r: 'i' }, { k: 'ウ', r: 'u' }, { k: 'エ', r: 'e' }, { k: 'オ', r: 'o' },
+          { k: 'カ', r: 'ka' }, { k: 'キ', r: 'ki' }, { k: 'ク', r: 'ku' }, { k: 'ケ', r: 'ke' }, { k: 'コ', r: 'ko' },
+          { k: 'サ', r: 'sa' }, { k: 'シ', r: 'shi' }, { k: 'ス', r: 'su' }, { k: 'セ', r: 'se' }, { k: 'ソ', r: 'so' },
+          { k: 'タ', r: 'ta' }, { k: 'チ', r: 'chi' }, { k: 'ツ', r: 'tsu' }, { k: 'テ', r: 'te' }, { k: 'ト', r: 'to' },
+          { k: 'ナ', r: 'na' }, { k: 'ニ', r: 'ni' }, { k: 'ヌ', r: 'nu' }, { k: 'ネ', r: 'ne' }, { k: 'ノ', r: 'no' },
+          { k: 'ハ', r: 'ha' }, { k: 'ヒ', r: 'hi' }, { k: 'フ', r: 'fu' }, { k: 'ヘ', r: 'he' }, { k: 'ホ', r: 'ho' },
+          { k: 'マ', r: 'ma' }, { k: 'ミ', r: 'mi' }, { k: 'ム', r: 'mu' }, { k: 'メ', r: 'me' }, { k: 'モ', r: 'mo' },
+          { k: 'ヤ', r: 'ya' }, { empty: true }, { k: 'ユ', r: 'yu' }, { empty: true }, { k: 'ヨ', r: 'yo' },
+          { k: 'ラ', r: 'ra' }, { k: 'リ', r: 'ri' }, { k: 'ル', r: 'ru' }, { k: 'レ', r: 're' }, { k: 'ロ', r: 'ro' },
+          { k: 'ワ', r: 'wa' }, { empty: true }, { empty: true }, { empty: true }, { k: 'ヲ', r: 'wo' },
+          { k: 'ン', r: 'n' }, { empty: true }, { empty: true }, { empty: true }, { empty: true },
+        ],
+        dakuon: [
+          { k: 'ガ', r: 'ga' }, { k: 'ギ', r: 'gi' }, { k: 'グ', r: 'gu' }, { k: 'ゲ', r: 'ge' }, { k: 'ゴ', r: 'go' },
+          { k: 'ザ', r: 'za' }, { k: 'ジ', r: 'ji' }, { k: 'ズ', r: 'zu' }, { k: 'ゼ', r: 'ze' }, { k: 'ゾ', r: 'zo' },
+          { k: 'ダ', r: 'da' }, { k: 'ヂ', r: 'ji' }, { k: 'ヅ', r: 'zu' }, { k: 'デ', r: 'de' }, { k: 'ド', r: 'do' },
+          { k: 'バ', r: 'ba' }, { k: 'ビ', r: 'bi' }, { k: 'ブ', r: 'bu' }, { k: 'ベ', r: 'be' }, { k: 'ボ', r: 'bo' },
+          { k: 'パ', r: 'pa' }, { k: 'ピ', r: 'pi' }, { k: 'プ', r: 'pu' }, { k: 'ペ', r: 'pe' }, { k: 'ポ', r: 'po' }
+        ],
+        yoon: [
+          { k: 'キャ', r: 'kya' }, { k: 'キュ', r: 'kyu' }, { k: 'キョ', r: 'kyo' },
+          { k: 'シャ', r: 'sha' }, { k: 'シュ', r: 'shu' }, { k: 'ショ', r: 'sho' },
+          { k: 'チャ', r: 'cha' }, { k: 'チュ', r: 'chu' }, { k: 'チョ', r: 'cho' },
+          { k: 'ニャ', r: 'nya' }, { k: 'ニュ', r: 'nyu' }, { k: 'ニョ', r: 'nyo' },
+          { k: 'ヒャ', r: 'hya' }, { k: 'ヒュ', r: 'hyu' }, { k: 'ヒョ', r: 'hyo' },
+          { k: 'ミャ', r: 'mya' }, { k: 'ミュ', r: 'myu' }, { k: 'ミョ', r: 'myo' },
+          { k: 'リャ', r: 'rya' }, { k: 'リュ', r: 'ryu' }, { k: 'リョ', r: 'ryo' },
+          { k: 'ギャ', r: 'gya' }, { k: 'ギュ', r: 'gyu' }, { k: 'ギョ', r: 'gyo' },
+          { k: 'ジャ', r: 'ja' }, { k: 'ジュ', r: 'ju' }, { k: 'ジョ', r: 'jo' },
+          { k: 'ビャ', r: 'bya' }, { k: 'ビュ', r: 'byu' }, { k: 'ビョ', r: 'byo' },
+          { k: 'ピャ', r: 'pya' }, { k: 'ピュ', r: 'pyu' }, { k: 'ピョ', r: 'pyo' }
+        ]
+      }
+    };
+
+    const getValidChars = (type) => ({
+      seion: kanaData[type].seion.filter(d => !d.empty),
+      dakuon: kanaData[type].dakuon.filter(d => !d.empty),
+      yoon: kanaData[type].yoon.filter(d => !d.empty),
+      all: [...kanaData[type].seion.filter(d => !d.empty), ...kanaData[type].dakuon.filter(d => !d.empty), ...kanaData[type].yoon.filter(d => !d.empty)]
+    });
+
+    const validCharsData = {
+      hiragana: getValidChars('hiragana'),
+      katakana: getValidChars('katakana')
+    };
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      }
+    }
+
+    window.playAudio = (text) => {
+      try {
+        const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&le=jap`;
+        const audio = new Audio(audioUrl);
+        audio.onerror = () => {
+          const backupUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ja&client=tw-ob&q=${encodeURIComponent(text)}`;
+          const backupAudio = new Audio(backupUrl);
+          backupAudio.onerror = () => fallbackTTS(text);
+          backupAudio.play().catch(() => fallbackTTS(text));
+        };
+        audio.play().catch(() => fallbackTTS(text));
+      } catch (error) { fallbackTTS(text); }
+    };
+
+    const fallbackTTS = (text) => {
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text + "。");
+        utterance.lang = 'ja-JP';
+        const voices = window.speechSynthesis.getVoices();
+        const jaVoices = voices.filter(v => v.lang.includes('ja'));
+        const bestVoice = jaVoices.find(v => v.name.includes('Google')) || jaVoices.find(v => v.name.includes('Kyoko') || v.name.includes('Otoya')) || jaVoices.find(v => v.name.includes('Haruka') || v.name.includes('Ayumi')) || jaVoices[0];
+        if (bestVoice) utterance.voice = bestVoice;
+        utterance.rate = 0.85; utterance.pitch = 1.1; 
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    // ==========================================
+    // 2. 核心狀態與共用函數
+    // ==========================================
+    let AppState = {
+      activeTab: 'chart',
+      kanaType: 'hiragana'
+    };
+
+    function switchTab(tabId) {
+      AppState.activeTab = tabId;
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.remove('bg-amber-100', 'text-amber-700', 'bg-blue-100', 'text-blue-700');
+        btn.classList.add('text-slate-500', 'hover:bg-slate-100');
+        if(btn.dataset.tab === tabId) {
+          btn.classList.remove('text-slate-500', 'hover:bg-slate-100');
+          btn.classList.add(AppState.kanaType === 'hiragana' ? 'bg-amber-100' : 'bg-blue-100');
+          btn.classList.add(AppState.kanaType === 'hiragana' ? 'text-amber-700' : 'text-blue-700');
+        }
+      });
+
+      document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden'));
+      document.getElementById('view-' + tabId).classList.remove('hidden');
+
+      if (tabId === 'chart') ChartApp.render();
+      if (tabId === 'flashcard') FlashcardApp.init();
+      if (tabId === 'quiz') QuizApp.init();
+      if (tabId === 'writing') WritingApp.init();
+    }
+
+    window.setKanaType = function(type) {
+      AppState.kanaType = type;
+      
+      const btnH = document.getElementById('btn-hiragana');
+      const btnK = document.getElementById('btn-katakana');
+      btnH.className = `px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${type === 'hiragana' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700'}`;
+      btnK.className = `px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${type === 'katakana' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`;
+
+      document.getElementById('title-icon').textContent = type === 'hiragana' ? 'あ' : 'ア';
+      document.getElementById('title-icon').className = `text-3xl ${type === 'hiragana' ? 'text-amber-600' : 'text-blue-600'}`;
+      document.getElementById('title-text').textContent = type === 'hiragana' ? '平假名' : '片假名';
+      document.getElementById('title-text').className = type === 'hiragana' ? 'text-amber-600' : 'text-blue-600';
+
+      switchTab(AppState.activeTab); // Refresh current tab colors and data
+      ListeningApp.updateColors();
+    };
+
+    function renderCategorySelector(containerId, currentCategory, onChangeCallback) {
+      const container = document.getElementById(containerId);
+      const activeClass = AppState.kanaType === 'hiragana' ? 'bg-amber-500 text-white shadow-md' : 'bg-blue-500 text-white shadow-md';
+      const inactiveClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+      
+      const options = [
+        { id: 'seion', label: '清音' }, { id: 'dakuon', label: '濁音/半濁音' },
+        { id: 'yoon', label: '拗音' }, { id: 'all', label: '綜合全部' }
+      ];
+
+      container.innerHTML = options.map(opt => `
+        <button onclick="${onChangeCallback}('${opt.id}')" class="px-3 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-full transition-all duration-300 active:scale-95 ${currentCategory === opt.id ? activeClass : inactiveClass}">
+          ${opt.label}
+        </button>
+      `).join('');
+    }
+
+    // ==========================================
+    // 3. 各分頁模組實作
+    // ==========================================
+
+    // --- Chart ---
+    const ChartApp = {
+      render() {
+        const data = kanaData[AppState.kanaType];
+        document.getElementById('chart-container').innerHTML = `
+          ${this.buildTable("清音 (Seion)", data.seion, 5, ['a', 'i', 'u', 'e', 'o'], false)}
+          ${this.buildTable("濁音・半濁音 (Dakuon / Handakuon)", data.dakuon, 5, ['a', 'i', 'u', 'e', 'o'], false)}
+          ${this.buildTable("拗音 (Yōon)", data.yoon, 3, ['ya', 'yu', 'yo'], true)}
+        `;
+      },
+      buildTable(title, gridData, cols, headers, isYoon) {
+        const hoverColor = AppState.kanaType === 'hiragana' ? 'hover:border-amber-400 hover:bg-amber-50 hover-text-amber-600' : 'hover:border-blue-400 hover:bg-blue-50 hover-text-blue-600';
+        const gridClass = cols === 5 ? "grid-cols-5" : "grid-cols-3";
+        const textClass = isYoon ? 'text-2xl sm:text-3xl md:text-4xl' : 'text-3xl sm:text-4xl md:text-5xl';
+        
+        let html = `<div class="w-full max-w-2xl bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 mx-auto">
+          <h2 class="text-xl font-bold mb-4 text-slate-700">${title}</h2>
+          <div class="grid ${gridClass} gap-2 md:gap-3">`;
+        
+        headers.forEach(v => html += `<div class="text-center text-slate-400 font-semibold mb-2 hidden md:block">${v}</div>`);
+        
+        gridData.forEach(item => {
+          html += `<div class="aspect-square flex justify-center items-center">`;
+          if(item.empty) {
+            html += `<div class="w-full h-full bg-slate-50 rounded-xl border border-dashed border-slate-200"></div>`;
+          } else {
+            // Using inline styles/classes for hover text color dynamically is tricky in plain HTML without complex CSS rules. 
+            // We use simple group-hover approach.
+            html += `<button onclick="playAudio('${item.k}')" class="w-full h-full flex flex-col items-center justify-center bg-white border-2 border-slate-100 rounded-xl transition-all duration-200 group active:scale-95 ${hoverColor.split(' hover-text')[0]}">
+              <span class="${textClass} font-medium text-slate-800 mb-0 md:mb-1 tracking-tighter">${item.k}</span>
+              <span class="text-xs md:text-sm text-slate-400 transition-colors group-hover:${hoverColor.split('hover-text-')[1]}">${item.r}</span>
+            </button>`;
+          }
+          html += `</div>`;
+        });
+        html += `</div></div>`;
+        return html;
+      }
+    };
+
+    // --- Flashcard ---
+    window.FlashcardApp = {
+      category: 'seion', currentIndex: 0, isFlipped: false, cards: [], range: {start:1, end:1}, inputRange: {start:1, end:1},
+      
+      init() {
+        this.setCategory(this.category); // Will trigger UI update
+      },
+      setCategory(cat) {
+        this.category = cat;
+        const validChars = validCharsData[AppState.kanaType][cat];
+        this.range = { start: 1, end: validChars.length };
+        this.inputRange = { start: 1, end: validChars.length };
+        this.shuffleCards();
+        this.renderUI();
+      },
+      shuffleCards() {
+        const validChars = validCharsData[AppState.kanaType][this.category];
+        this.cards = [...validChars.slice(this.range.start - 1, this.range.end)].sort(() => Math.random() - 0.5);
+        this.currentIndex = 0;
+        this.isFlipped = false;
+        this.updateCardUI();
+      },
+      applyRange() {
+        const max = validCharsData[AppState.kanaType][this.category].length;
+        let s = parseInt(document.getElementById('fc-range-min').value, 10);
+        let e = parseInt(document.getElementById('fc-range-max').value, 10);
+        this.range = { start: s, end: e };
+        this.inputRange = { start: s, end: e };
+        this.shuffleCards();
+      },
+      next() {
+        this.isFlipped = false; this.updateCardUI();
+        setTimeout(() => { this.currentIndex = (this.currentIndex + 1) % this.cards.length; this.updateCardUI(); }, 150);
+      },
+      prev() {
+        this.isFlipped = false; this.updateCardUI();
+        setTimeout(() => { this.currentIndex = (this.currentIndex - 1 + this.cards.length) % this.cards.length; this.updateCardUI(); }, 150);
+      },
+      shuffle() { this.isFlipped = false; this.updateCardUI(); setTimeout(() => this.shuffleCards(), 150); },
+      toggleFlip() {
+        this.isFlipped = !this.isFlipped;
+        if(!this.isFlipped && this.cards.length > 0) playAudio(this.cards[this.currentIndex].k);
+        this.updateCardUI();
+      },
+      updateCardUI() {
+        document.getElementById('fc-card-inner').style.transform = this.isFlipped ? 'rotateY(180deg)' : '';
+        const card = this.cards[this.currentIndex] || {k:'', r:''};
+        
+        document.getElementById('fc-front-k').textContent = card.k;
+        document.getElementById('fc-front-k').className = `${card.k.length > 1 ? 'text-5xl sm:text-6xl md:text-8xl' : 'text-6xl sm:text-7xl md:text-9xl'} font-medium text-slate-800 tracking-tighter`;
+        document.getElementById('fc-back-r').textContent = card.r;
+        document.getElementById('fc-back-k').textContent = card.k;
+        document.getElementById('fc-progress').textContent = `${this.currentIndex + 1} / ${this.cards.length}`;
+        
+        // Colors
+        const isH = AppState.kanaType === 'hiragana';
+        document.getElementById('fc-back-bg').className = `absolute w-full h-full backface-hidden text-white rounded-3xl shadow-lg flex flex-col items-center justify-center rotate-y-180 ${isH?'bg-amber-500':'bg-blue-500'}`;
+      },
+      renderUI() {
+        renderCategorySelector('fc-category-selector', this.category, 'FlashcardApp.setCategory');
+        const max = validCharsData[AppState.kanaType][this.category].length;
+        const isH = AppState.kanaType === 'hiragana';
+        
+        document.getElementById('fc-range-text').textContent = `${this.inputRange.start} - ${this.inputRange.end}`;
+        document.getElementById('fc-range-text').className = `font-bold ${isH ? 'text-amber-600':'text-blue-600'}`;
+        
+        const minInput = document.getElementById('fc-range-min');
+        const maxInput = document.getElementById('fc-range-max');
+        minInput.max = max; maxInput.max = max;
+        minInput.value = this.inputRange.start; maxInput.value = this.inputRange.end;
+        
+        const track = document.getElementById('fc-range-track');
+        track.className = `absolute h-2 rounded-full ${isH?'bg-amber-400':'bg-blue-400'}`;
+        
+        const updateTrack = () => {
+          if(max <= 1) { track.style.width = '0%'; return; }
+          const pct1 = Math.round(((minInput.value - 1) / (max - 1)) * 100);
+          const pct2 = Math.round(((maxInput.value - 1) / (max - 1)) * 100);
+          track.style.left = `${pct1}%`; track.style.width = `${pct2 - pct1}%`;
+          document.getElementById('fc-range-text').textContent = `${minInput.value} - ${maxInput.value}`;
+        };
+        
+        minInput.oninput = (e) => { minInput.value = Math.min(Number(e.target.value), maxInput.value - 1); updateTrack(); };
+        maxInput.oninput = (e) => { maxInput.value = Math.max(Number(e.target.value), Number(minInput.value) + 1); updateTrack(); };
+        updateTrack();
+
+        const applyBtn = document.getElementById('fc-apply-btn');
+        applyBtn.className = `mt-2 md:mt-3 w-full py-2 rounded-lg transition-colors font-medium text-sm md:text-base active:scale-95 ${isH?'bg-amber-100 text-amber-700 hover:bg-amber-200':'bg-blue-100 text-blue-700 hover:bg-blue-200'}`;
+        applyBtn.onclick = () => this.applyRange();
+
+        document.getElementById('fc-card-container').onclick = () => this.toggleFlip();
+        document.getElementById('fc-audio-btn').onclick = (e) => { e.stopPropagation(); playAudio(this.cards[this.currentIndex].k); };
+
+        this.updateCardUI();
+      }
+    };
+
+    // --- Quiz ---
+    window.QuizApp = {
+      category: 'seion', question: null, options: [], status: 'playing', stats: { correct: 0, total: 0 },
+      
+      init() { this.setCategory(this.category); },
+      setCategory(cat) {
+        this.category = cat;
+        this.resetStats();
+        this.generateQuestion();
+        renderCategorySelector('qz-category-selector', this.category, 'QuizApp.setCategory');
+      },
+      resetStats() { this.stats = {correct: 0, total: 0}; this.updateStatsUI(); },
+      generateQuestion() {
+        const validChars = validCharsData[AppState.kanaType][this.category];
+        if(!validChars || validChars.length === 0) return;
+        const allPool = validCharsData[AppState.kanaType]['all'];
+        
+        const correctChar = validChars[Math.floor(Math.random() * validChars.length)];
+        let wrongOptions = [];
+        while(wrongOptions.length < 3) {
+          const rand = allPool[Math.floor(Math.random() * allPool.length)];
+          if(rand.r !== correctChar.r && !wrongOptions.find(o => o.r === rand.r)) wrongOptions.push(rand);
+        }
+        
+        this.options = [correctChar, ...wrongOptions].sort(() => Math.random() - 0.5);
+        this.question = correctChar;
+        this.status = 'playing';
+        this.renderUI();
+      },
+      handleSelect(optionObj, btnElement) {
+        if(this.status !== 'playing') return;
+        
+        const isCorrect = optionObj.r === this.question.r;
+        this.status = isCorrect ? 'correct' : 'wrong';
+        this.stats.correct += isCorrect ? 1 : 0;
+        this.stats.total += 1;
+        
+        playAudio(this.question.k);
+        this.updateStatsUI();
+        this.renderOptions(optionObj); // Re-render with colors
+
+        // Animate BG
+        const bgPulse = document.getElementById('qz-bg-pulse');
+        bgPulse.className = `absolute inset-0 animate-pulse ${isCorrect?'bg-green-50':'bg-red-50'}`;
+        
+        // Icon
+        const iconCont = document.getElementById('qz-icon-container');
+        iconCont.innerHTML = isCorrect 
+          ? `<i data-lucide="check-circle-2" class="text-green-500 animate-bounce w-8 h-8 md:w-10 md:h-10"></i>` 
+          : `<i data-lucide="x-circle" class="text-red-500 animate-bounce w-8 h-8 md:w-10 md:h-10"></i>`;
+        lucide.createIcons({root: iconCont});
+
+        setTimeout(() => this.generateQuestion(), 1500);
+      },
+      updateStatsUI() {
+        document.getElementById('qz-total').textContent = this.stats.total;
+        const acc = this.stats.total === 0 ? 0 : Math.round((this.stats.correct / this.stats.total)*100);
+        const accEl = document.getElementById('qz-accuracy');
+        accEl.textContent = acc + '%';
+        accEl.className = `text-base md:text-lg ${acc >= 80 ? 'text-green-500' : acc >= 50 ? 'text-amber-500' : 'text-red-500'}`;
+      },
+      renderOptions(selectedOption = null) {
+        const container = document.getElementById('qz-options');
+        const hoverColor = AppState.kanaType === 'hiragana' ? 'hover:bg-amber-50 hover:border-amber-400' : 'hover:bg-blue-50 hover:border-blue-400';
+        
+        container.innerHTML = '';
+        this.options.forEach((opt, idx) => {
+          const btn = document.createElement('button');
+          let btnClass = `p-3 md:p-6 text-xl md:text-3xl font-bold rounded-2xl transition-all duration-300 transform active:scale-95 `;
+          
+          if(this.status === 'playing') {
+            btnClass += `bg-white border-2 border-slate-100 text-slate-700 ${hoverColor}`;
+            btn.onclick = () => this.handleSelect(opt, btn);
+          } else {
+            if(opt.r === this.question.r) {
+              btnClass += `bg-green-500 border-2 border-green-500 text-white shadow-lg shadow-green-200`;
+            } else if (selectedOption && selectedOption.r === opt.r) {
+              btnClass += `bg-red-500 border-2 border-red-500 text-white`;
+            } else {
+              btnClass += `bg-slate-50 border-2 border-slate-100 text-slate-300 opacity-50`;
+            }
+          }
+          btn.className = btnClass;
+          btn.textContent = opt.r;
+          container.appendChild(btn);
+        });
+      },
+      renderUI() {
+        document.getElementById('qz-bg-pulse').className = 'absolute inset-0 hidden';
+        document.getElementById('qz-icon-container').innerHTML = '';
+        
+        const qEl = document.getElementById('qz-question');
+        qEl.textContent = this.question.k;
+        qEl.className = `${this.question.k.length > 1 ? 'text-6xl md:text-8xl' : 'text-7xl md:text-9xl'} font-bold text-slate-800 mb-4 md:mb-8 tracking-tighter`;
+        
+        this.renderOptions();
+      }
+    };
+
+    // --- Writing ---
+    window.WritingApp = {
+      category: 'seion', currentIndex: 0, isDrawing: false, canvasCtx: null, resizeTimer: null,
+      
+      init() {
+        this.setCategory(this.category);
+        this.bindEvents();
+      },
+      setCategory(cat) {
+        this.category = cat;
+        this.currentIndex = 0;
+        this.updateUI();
+        setTimeout(() => this.initCanvas(), 100);
+        renderCategorySelector('wr-category-selector', this.category, 'WritingApp.setCategory');
+      },
+      initCanvas() {
+        const canvas = document.getElementById('wr-canvas');
+        if(!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        if(rect.width === 0 || rect.height === 0) return;
+
+        const scale = window.devicePixelRatio || 1;
+        canvas.width = rect.width * scale;
+        canvas.height = rect.height * scale;
+        
+        this.canvasCtx = canvas.getContext('2d');
+        this.canvasCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.canvasCtx.lineCap = 'round';
+        this.canvasCtx.lineJoin = 'round';
+        this.canvasCtx.lineWidth = 14 * scale;
+        this.canvasCtx.strokeStyle = '#334155';
+      },
+      clearCanvas() { this.initCanvas(); },
+      next() {
+        const max = validCharsData[AppState.kanaType][this.category].length;
+        this.currentIndex = (this.currentIndex + 1) % max;
+        this.updateUI(); this.clearCanvas();
+      },
+      prev() {
+        const max = validCharsData[AppState.kanaType][this.category].length;
+        this.currentIndex = (this.currentIndex - 1 + max) % max;
+        this.updateUI(); this.clearCanvas();
+      },
+      updateUI() {
+        const validChars = validCharsData[AppState.kanaType][this.category];
+        const char = validChars[this.currentIndex] || {k:'', r:''};
+        
+        document.getElementById('wr-progress').textContent = `${this.currentIndex + 1} / ${validChars.length}`;
+        document.getElementById('wr-current-char').textContent = char.k;
+        
+        const bgChar = document.getElementById('wr-bg-char');
+        bgChar.textContent = char.k;
+        const textClass = char.k.length > 1 ? "text-[140px] sm:text-[160px] md:text-[200px]" : "text-[200px] sm:text-[220px] md:text-[280px]";
+        bgChar.className = `${textClass} font-handwriting font-semibold transform -translate-y-[8%] tracking-tighter`;
+        
+        document.getElementById('wr-romaji').textContent = char.r;
+        const btn = document.getElementById('wr-audio-btn');
+        btn.className = `absolute z-10 bottom-1 right-2 md:bottom-2 md:right-3 flex items-center gap-1.5 p-2 text-slate-300 font-bold text-2xl md:text-3xl select-none transition-colors active:scale-95 ${AppState.kanaType==='hiragana'?'hover:text-amber-500':'hover:text-blue-500'}`;
+        btn.onclick = (e) => { e.stopPropagation(); playAudio(char.k); };
+      },
+      getCoords(e) {
+        const canvas = document.getElementById('wr-canvas');
+        const rect = canvas.getBoundingClientRect();
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (canvas.width / rect.width),
+          y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+      },
+      bindEvents() {
+        const canvas = document.getElementById('wr-canvas');
+        if(canvas.getAttribute('data-bound')) return; // Prevent double bind
+        
+        const start = (e) => {
+          this.isDrawing = true;
+          const {x, y} = this.getCoords(e);
+          const scale = window.devicePixelRatio || 1;
+          this.canvasCtx.lineCap = 'round'; this.canvasCtx.lineJoin = 'round';
+          this.canvasCtx.lineWidth = 14 * scale; this.canvasCtx.strokeStyle = '#334155';
+          this.canvasCtx.beginPath(); this.canvasCtx.moveTo(x, y); this.canvasCtx.lineTo(x, y); this.canvasCtx.stroke();
+        };
+        const draw = (e) => {
+          if(!this.isDrawing) return;
+          const {x, y} = this.getCoords(e);
+          this.canvasCtx.lineTo(x, y); this.canvasCtx.stroke();
+        };
+        const stop = () => { this.isDrawing = false; };
+
+        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stop); canvas.addEventListener('mouseout', stop);
+        canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stop); canvas.addEventListener('touchcancel', stop);
+
+        const preventScroll = (e) => e.preventDefault();
+        canvas.addEventListener('touchstart', preventScroll, { passive: false });
+        canvas.addEventListener('touchmove', preventScroll, { passive: false });
+        
+        window.addEventListener('resize', () => {
+          clearTimeout(this.resizeTimer);
+          this.resizeTimer = setTimeout(() => this.initCanvas(), 100);
+        });
+
+        canvas.setAttribute('data-bound', 'true');
+      }
+    };
+
+    // --- Listening ---
+    window.ListeningApp = {
+      isPlaying: false,
+      init() {
+        this.updateColors();
+        const sentences = ["こんにちは", "ありがとうございます", "お元気ですか", "よろしくお願いします"];
+        const container = document.getElementById('ls-shortcuts');
+        container.innerHTML = sentences.map(s => 
+          `<button onclick="document.getElementById('ls-text').value='${s}'" class="text-xs px-2 py-1 md:px-3 md:py-1.5 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors">${s}</button>`
+        ).join('') + `<button onclick="document.getElementById('ls-text').value=''" class="text-xs px-2 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors ml-auto">清除</button>`;
+
+        const rateInput = document.getElementById('ls-rate');
+        rateInput.oninput = (e) => { document.getElementById('ls-rate-text').textContent = `語速：${parseFloat(e.target.value).toFixed(2)}x`; };
+        
+        document.getElementById('ls-play-btn').onclick = () => this.togglePlay();
+      },
+      updateColors() {
+        const isH = AppState.kanaType === 'hiragana';
+        document.getElementById('ls-text').className = `w-full h-24 md:h-32 p-3 md:p-4 text-base md:text-lg bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-1 transition-all ${isH?'focus:border-amber-400 focus:ring-amber-400':'focus:border-blue-400 focus:ring-blue-400'}`;
+        this.updateBtnUI();
+      },
+      updateBtnUI() {
+        const btn = document.getElementById('ls-play-btn');
+        const text = document.getElementById('ls-text').value.trim();
+        btn.disabled = text === '';
+        if(this.isPlaying) {
+          btn.className = `flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 rounded-full text-white font-bold text-base md:text-lg transition-all duration-300 transform active:scale-95 bg-red-500 hover:bg-red-600 shadow-red-200 shadow-lg`;
+          btn.innerHTML = `<i data-lucide="square" class="fill-current w-5 h-5 md:w-6 md:h-6"></i> <span>停止播放</span>`;
+        } else {
+          const themeClass = AppState.kanaType === 'hiragana' ? 'bg-amber-500 shadow-amber-200' : 'bg-blue-500 shadow-blue-200';
+          btn.className = `flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 md:py-4 rounded-full text-white font-bold text-base md:text-lg transition-all duration-300 transform active:scale-95 ${themeClass} hover:opacity-90 shadow-lg disabled:opacity-50 disabled:active:scale-100`;
+          btn.innerHTML = `<i data-lucide="play" class="fill-current w-5 h-5 md:w-6 md:h-6"></i> <span>朗讀句子</span>`;
+        }
+        lucide.createIcons();
+      },
+      togglePlay() {
+        const text = document.getElementById('ls-text').value.trim();
+        if(!text) return;
+        if(this.isPlaying) {
+          window.speechSynthesis.cancel();
+          this.isPlaying = false;
+          this.updateBtnUI();
+          return;
+        }
+
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); 
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'ja-JP';
+          utterance.rate = parseFloat(document.getElementById('ls-rate').value);
+
+          const voices = window.speechSynthesis.getVoices();
+          const jaVoices = voices.filter(v => v.lang.includes('ja'));
+          const bestVoice = jaVoices.find(v => v.name.includes('Google')) || jaVoices.find(v => v.name.includes('Kyoko') || v.name.includes('Otoya')) || jaVoices.find(v => v.name.includes('Haruka') || v.name.includes('Ayumi')) || jaVoices[0];
+          if (bestVoice) utterance.voice = bestVoice;
+
+          utterance.onstart = () => { this.isPlaying = true; this.updateBtnUI(); };
+          utterance.onend = () => { this.isPlaying = false; this.updateBtnUI(); };
+          utterance.onerror = () => { this.isPlaying = false; this.updateBtnUI(); };
+
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    };
+    
+    // 綁定 Textarea 輸入事件以更新按鈕狀態
+    document.getElementById('ls-text').addEventListener('input', () => ListeningApp.updateBtnUI());
+
+    // ==========================================
+    // 4. 初始化應用程式
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      switchTab('chart'); // Starts the app rendering
+      ListeningApp.init(); // Pre-init listening shortcuts
+    });
+
+  </script>
+</body>
+</html>
